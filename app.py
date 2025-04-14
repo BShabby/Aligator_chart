@@ -6,12 +6,15 @@ import plotly.offline as po
 
 app = Flask(__name__)
 
+# SMMA 함수
 def smma(series, period):
     return series.ewm(alpha=1/period, adjust=False).mean()
 
+# EMA 함수
 def ema(series, period):
     return series.ewm(span=period, adjust=False).mean()
 
+# RSI 계산
 def rsi(series, period=14):
     delta = series.diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
@@ -19,6 +22,7 @@ def rsi(series, period=14):
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 
+# MFI 계산
 def mfi(data, period=14):
     typical_price = (data['High'] + data['Low'] + data['Close']) / 3
     money_flow = typical_price * data['Volume']
@@ -29,6 +33,7 @@ def mfi(data, period=14):
     mfi = 100 * (positive_mf / (positive_mf + negative_mf))
     return mfi
 
+# 프랙탈 계산
 def fractals(high, low):
     up_fractal = (high.shift(2) < high.shift(1)) & (high.shift(0) > high.shift(1)) & (high.shift(0) > high.shift(-1)) & (high.shift(2) < high.shift(0))
     down_fractal = (low.shift(2) > low.shift(1)) & (low.shift(0) < low.shift(1)) & (low.shift(0) < low.shift(-1)) & (low.shift(2) > low.shift(0))
@@ -38,19 +43,22 @@ def fractals(high, low):
 def index():
     chart_html = ''
     if request.method == 'POST':
-        ticker = request.form['ticker']
-        data = yf.download(ticker, period='6mo')
+        ticker = request.form['ticker'].strip()
 
-        data['Jaw'] = smma(data['Close'], 13).shift(8)
-        data['Teeth'] = smma(data['Close'], 8).shift(5)
-        data['Lips'] = smma(data['Close'], 5).shift(3)
-        data['EMA200'] = ema(data['Close'], 200)
-        data['EMA60'] = ema(data['Close'], 60)
-        data['RSI'] = rsi(data['Close'])
-        data['MFI'] = mfi(data)
-        up_fractal, down_fractal = fractals(data['High'], data['Low'])
-        data['UpFractal'] = data['High'][up_fractal]
-        data['DownFractal'] = data['Low'][down_fractal]
+        # 🛠️ 한국 종목만 허용: 숫자만 입력받고 자동으로 .KS 붙이기
+        if ticker.isdigit():
+            ticker += '.KS'
+        else:
+            return "<h2>❗오류: 숫자만 입력하세요. (예: 005930)</h2>"
+
+        try:
+            data = yf.download(ticker, period='6mo')
+
+            if data.empty:
+                return "<h2>❗해당 종목의 데이터를 찾을 수 없습니다. (코드가 잘못되었을 수 있습니다)</h2>"
+
+        except Exception as e:
+            return f"<h2>❗데이터 가져오는 중 오류 발생: {e}</h2>"
 
         fig = make_alligator_chart(data, ticker)
         chart_html = po.plot(fig, output_type='div')
@@ -67,8 +75,8 @@ def make_alligator_chart(data, ticker):
         low=data['Low'],
         close=data['Close'],
         name='Candlestick',
-        increasing_line_color='red',
-        decreasing_line_color='green'
+        increasing_line_color='red',   # 상승: 빨강
+        decreasing_line_color='green'  # 하락: 초록
     ))
 
     fig.add_trace(go.Scatter(x=data.index, y=data['Jaw'], line=dict(color='blue', width=1), name='Jaw (13,8)'))
@@ -93,3 +101,4 @@ def make_alligator_chart(data, ticker):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
