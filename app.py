@@ -45,7 +45,7 @@ def index():
     if request.method == 'POST':
         ticker = request.form['ticker'].strip()
 
-        # 🛠️ 한국 종목만 허용: 숫자만 입력받고 자동으로 .KS 붙이기
+        # 한국 주식 전용: 숫자만 입력받고 .KS 자동 추가
         if ticker.isdigit():
             ticker += '.KS'
         else:
@@ -56,6 +56,24 @@ def index():
 
             if data.empty:
                 return "<h2>❗해당 종목의 데이터를 찾을 수 없습니다. (코드가 잘못되었을 수 있습니다)</h2>"
+
+            # ✅ 다운로드 후 Alligator 지표 컬럼 추가
+            data['Jaw'] = smma(data['Close'], 13).shift(8)
+            data['Teeth'] = smma(data['Close'], 8).shift(5)
+            data['Lips'] = smma(data['Close'], 5).shift(3)
+
+            # EMA 계산
+            data['EMA200'] = ema(data['Close'], 200)
+            data['EMA60'] = ema(data['Close'], 60)
+
+            # RSI, MFI 계산
+            data['RSI'] = rsi(data['Close'])
+            data['MFI'] = mfi(data)
+
+            # 프랙탈 계산
+            up_fractal, down_fractal = fractals(data['High'], data['Low'])
+            data['UpFractal'] = data['High'][up_fractal]
+            data['DownFractal'] = data['Low'][down_fractal]
 
         except Exception as e:
             return f"<h2>❗데이터 가져오는 중 오류 발생: {e}</h2>"
@@ -101,4 +119,3 @@ def make_alligator_chart(data, ticker):
 
 if __name__ == '__main__':
     app.run(debug=True)
-
