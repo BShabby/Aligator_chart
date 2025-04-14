@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Alligator Chart Viewer</title>
+</head>
+<body>
+    <h1>📈 Alligator Chart Viewer</h1>
+    <form method="POST">
+        <input type="text" name="ticker" placeholder="Enter stock symbol (e.g., AAPL, MSFT, 005930.KS)" required>
+        <button type="submit">Show Chart</button>
+    </form>
+    <div>{{ chart_html|safe }}</div>
+</body>
+</html>
